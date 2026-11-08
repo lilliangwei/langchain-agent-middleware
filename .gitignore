@@ -1,0 +1,81 @@
+# ===== 敏感信息（切勿提交） =====
+.env
+.env.*
+*.env
+secrets.json
+credentials.json
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ===== 虚拟环境 =====
+venv/
+env/
+ENV/
+.venv/
+.env/  # 虚拟环境目录名（与上面的 .env 文件不冲突，git 按目录匹配）
+
+# ===== 测试与覆盖率 =====
+.pytest_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# ===== IDE / 编辑器 =====
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# ===== 日志与临时文件 =====
+*.log
+logs/
+debug.log
+llm_api.log
+*.tmp
+*.bak
+
+# ===== 系统 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
+
+# ===== 类型检查 / lint 缓存 =====
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+
+# ===== 记忆与 RAG 数据目录（向量库 / 摘要 / 测试文档，不入库）=====
+data/

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangChain 智能问答</title>
+<style>
+  /* ===== 页面骨架 ===== */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #010201;
+    color: #e8e6f0;
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow-x: hidden;
+  }
+  /* 网格背景（Uiverse 原 .grid，改为全屏） */
+  .grid {
+    position: fixed;
+    inset: 0;
+    background-image: linear-gradient(to right, #0f0f10 1px, transparent 1px),
+      linear-gradient(to bottom, #0f0f10 1px, transparent 1px);
+    background-size: 1rem 1rem;
+    background-position: center center;
+    z-index: -1;
+    filter: blur(1px);
+  }
+  h1 {
+    margin: 28px 0 8px;
+    font-size: 22px;
+    font-weight: 600;
+    background: linear-gradient(90deg, #a099d8, #dfa2da);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .subtitle { font-size: 12px; color: #6f6a85; margin-bottom: 16px; }
+
+  /* ===== 聊天区 ===== */
+  #chat {
+    width: min(720px, 92vw);
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 4px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg { max-width: 82%; padding: 10px 14px; border-radius: 12px; line-height: 1.65; font-size: 15px; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-end; background: #18116a; border: 1px solid #402fb5; }
+  .msg.bot  { align-self: flex-start; background: #0d0c14; border: 1px solid #241f3d; }
+  .msg .meta { display: block; margin-top: 6px; font-size: 11px; color: #6f6a85; }
+  .msg.bot.streaming { border-color: #cf30aa; }
+  #chat::-webkit-scrollbar { width: 6px; }
+  #chat::-webkit-scrollbar-thumb { background: #241f3d; border-radius: 3px; }
+
+  /* ===== Uiverse 发光输入框（by Lakshay-art，已修正 // 非法注释）===== */
+  #poda { display: flex; align-items: center; justify-content: center; margin: 10px 0 26px; position: relative; }
+  .white, .border, .darkBorderBg, .glow {
+    max-height: 70px; max-width: 314px;
+    height: 100%; width: 100%;
+    position: absolute; overflow: hidden; z-index: -1;
+    border-radius: 12px; filter: blur(3px);
+  }
+  .input {
+    background-color: #010201; border: none;
+    width: 301px; height: 56px; border-radius: 10px;
+    color: white; padding-inline: 59px 24px; font-size: 18px;
+  }
+  .input::placeholder { color: #c0b9c0; }
+  .input:focus { outline: none; }
+  #pink-mask {
+    pointer-events: none; width: 30px; height: 20px; position: absolute;
+    background: #cf30aa; top: 10px; left: 5px;
+    filter: blur(20px); opacity: 0.8; transition: all 2s;
+  }
+  #main:hover > #pink-mask { opacity: 0; }
+  .white { max-height: 63px; max-width: 307px; border-radius: 10px; filter: blur(2px); }
+  .white::before {
+    content: ""; z-index: -2; text-align: center;
+    top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(83deg);
+    position: absolute; width: 600px; height: 600px;
+    background-repeat: no-repeat; background-position: 0 0;
+    filter: brightness(1.4);
+    background-image: conic-gradient(rgba(0,0,0,0) 0%, #a099d8, rgba(0,0,0,0) 8%, rgba(0,0,0,0) 50%, #dfa2da, rgba(0,0,0,0) 58%);
+    transition: all 2s;
+  }
+  .border { max-height: 59px; max-width: 303px; border-radius: 11px; filter: blur(0.5px); }
+  .border::before {
+    content: ""; z-index: -2; text-align: center;
+    top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(70deg);
+    position: absolute; width: 600px; height: 600px;
+    filter: brightness(1.3);
+    background-repeat: no-repeat; background-position: 0 0;
+    background-image: conic-gradient(#1c191c, #402fb5 5%, #1c191c 14%, #1c191c 50%, #cf30aa 60%, #1c191c 64%);
+    transition: all 2s;
+  }
+  .darkBorderBg { max-height: 65px; max-width: 312px; }
+  .darkBorderBg::before {
+    content: ""; z-index: -2; text-align: center;
+    top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(82deg);
+    position: absolute; width: 600px; height: 600px;
+    background-repeat: no-repeat; background-position: 0 0;
+    background-image: conic-gradient(rgba(0,0,0,0), #18116a, rgba(0,0,0,0) 10%, rgba(0,0,0,0) 50%, #6e1b60, rgba(0,0,0,0) 60%);
+    transition: all 2s;
+  }
+  #poda:hover > .darkBorderBg::before { transform: translate(-50%,-50%) rotate(-98deg); }
+  #poda:hover > .glow::before { transform: translate(-50%,-50%) rotate(-120deg); }
+  #poda:hover > .white::before { transform: translate(-50%,-50%) rotate(-97deg); }
+  #poda:hover > .border::before { transform: translate(-50%,-50%) rotate(-110deg); }
+  #poda:focus-within > .darkBorderBg::before { transform: translate(-50%,-50%) rotate(442deg); transition: all 4s; }
+  #poda:focus-within > .glow::before { transform: translate(-50%,-50%) rotate(420deg); transition: all 4s; }
+  #poda:focus-within > .white::before { transform: translate(-50%,-50%) rotate(443deg); transition: all 4s; }
+  #poda:focus-within > .border::before { transform: translate(-50%,-50%) rotate(430deg); transition: all 4s; }
+  .glow { overflow: hidden; filter: blur(30px); opacity: 0.4; max-height: 130px; max-width: 354px; }
+  .glow::before {
+    content: ""; z-index: -2; text-align: center;
+    top: 50%; left: 50%; transform: translate(-50%,-50%) rotate(60deg);
+    position: absolute; width: 999px; height: 999px;
+    background-repeat: no-repeat; background-position: 0 0;
+    background-image: conic-gradient(#000, #402fb5 5%, #000 38%, #000 50%, #cf30aa 60%, #000 87%);
+    transition: all 2s;
+  }
+  #main { position: relative; }
+  #search-icon { position: absolute; left: 20px; top: 15px; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <h1>LangChain 智能问答</h1>
+  <div class="subtitle">复杂度路由 · 多模型轮询 · 多密钥降级 · 计费 · 缓存</div>
+
+  <div id="chat"></div>
+
+  <!-- Uiverse 发光输入框结构 -->
+  <div id="poda">
+    <div class="glow"></div>
+    <div class="darkBorderBg"></div>
+    <div class="darkBorderBg"></div>
+    <div class="darkBorderBg"></div>
+    <div class="white"></div>
+    <div class="border"></div>
+    <div id="main">
+      <input id="q" placeholder="输入问题，Enter 发送..." type="text" class="input" autocomplete="off" />
+      <div id="pink-mask"></div>
+      <div id="search-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c0b9c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const chatEl = document.getElementById('chat');
+  const inputEl = document.getElementById('q');
+  // 会话 ID：本次页面生命周期内固定，刷新即新会话
+  const sessionId = 'web_' + Math.random().toString(36).slice(2, 10);
+  let busy = false;
+
+  function addMsg(role, text) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + role;
+    div.textContent = text;
+    chatEl.appendChild(div);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    return div;
+  }
+
+  async function send() {
+    const question = inputEl.value.trim();
+    if (!question || busy) return;
+    busy = true;
+    inputEl.value = '';
+    addMsg('user', question);
+    const botEl = addMsg('bot', '');
+    botEl.classList.add('streaming');
+    let meta = null;
+
+    try {
+      const resp = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, session_id: sessionId }),
+      });
+      // SSE 手动解析：按 \n\n 切事件块
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop();
+        for (const block of parts) {
+          const ev = /event: (\w+)/.exec(block)?.[1];
+          const data = JSON.parse(/data: (.*)/s.exec(block)?.[1] || '{}');
+          if (ev === 'meta') {
+            meta = data;
+          } else if (ev === 'token') {
+            botEl.textContent += data.text;
+            chatEl.scrollTop = chatEl.scrollHeight;
+          } else if (ev === 'done') {
+            const src = meta && meta.tier === 'cache'
+              ? '缓存命中 · 0 成本'
+              : `${meta?.tier ?? ''} 档 · ${data.model} · ${data.tokens} tokens · ≈¥${data.cost}`;
+            const m = document.createElement('span');
+            m.className = 'meta';
+            m.textContent = src;
+            botEl.appendChild(m);
+          } else if (ev === 'error') {
+            botEl.textContent = '【错误】' + data.message;
+          }
+        }
+      }
+    } catch (e) {
+      botEl.textContent = '【网络错误】' + e.message;
+    } finally {
+      botEl.classList.remove('streaming');
+      busy = false;
+      inputEl.focus();
+    }
+  }
+
+  inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+
+  addMsg('bot', '你好，我是多模型轮询问答助手。简单问题走快速档，复杂推理自动切强模型，开始提问吧。');
+</script>
+</body>
+</html>
