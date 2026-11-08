@@ -1,6 +1,7 @@
 # ===== 敏感信息（切勿提交） =====
 .env
 .env.*
+!.env.example
 *.env
 secrets.json
 credentials.json
